@@ -8,6 +8,7 @@ go 1.22
 use (
 	.
 	./consul
+	./etcd
 	./examples/basic
 	./jsonschema
 	./sources
@@ -20,3 +21,5 @@ replace github.com/sinashahoveisi/typecfg/sources v0.1.0 => ./sources
 replace github.com/sinashahoveisi/typecfg/jsonschema v0.1.0 => ./jsonschema
 
 replace github.com/sinashahoveisi/typecfg/consul v0.1.0 => ./consul
+
+replace github.com/sinashahoveisi/typecfg/etcd v0.1.0 => ./etcd
