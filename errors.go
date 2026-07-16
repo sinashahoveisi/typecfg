@@ -7,15 +7,22 @@ import "fmt"
 // difference from most config libraries: instead of "field X is required",
 // you get "field X (env: APP_PORT, yaml: port) is required but was not set
 // in config.yaml or in the environment".
+//
+// FieldError does not store the raw field value. For secret:"true" fields,
+// callers must put only redacted text in Reason; Error() and
+// ValidationError.Error() only format Field, Tag, Sources (key names), and
+// Reason — they never look up source values.
 type FieldError struct {
 	// Field is the Go struct field path, e.g. "Server.Port".
 	Field string
 	// Tag is the struct tag key that failed (e.g. "required", "min", "oneof").
 	Tag string
 	// Sources lists where this field could have been populated from,
-	// e.g. []string{"env:APP_PORT", "yaml:server.port"}.
+	// e.g. []string{"env:APP_PORT", "yaml:server.port"}. Key names only;
+	// never values.
 	Sources []string
-	// Reason is a human-readable explanation.
+	// Reason is a human-readable explanation. Must not contain secret field
+	// values when the field is tagged secret:"true".
 	Reason string
 }
 

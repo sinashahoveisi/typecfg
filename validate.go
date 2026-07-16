@@ -65,7 +65,7 @@ func validateStruct(v reflect.Value, pathPrefix string, errs *[]*FieldError, set
 				continue
 			}
 			name, arg, _ := strings.Cut(rule, "=")
-			if err := applyRule(fv, name, arg, fieldPath, key, setFields, data); err != "" {
+			if err := applyRule(fv, name, arg, fieldPath, key, setFields, data, isSecret(field)); err != "" {
 				*errs = append(*errs, &FieldError{
 					Field:   fieldPath,
 					Tag:     name,
@@ -100,8 +100,10 @@ func possibleSources(field reflect.StructField, key string) []string {
 }
 
 // applyRule returns a non-empty human-readable reason if the rule fails,
-// or "" if it passes.
-func applyRule(fv reflect.Value, name, arg, fieldPath, key string, setFields map[string]struct{}, data map[string]any) string {
+// or "" if it passes. When secret is true, the field's actual value is
+// replaced with redactedMarker; rule args (limits, patterns, oneof options)
+// are never redacted.
+func applyRule(fv reflect.Value, name, arg, fieldPath, key string, setFields map[string]struct{}, data map[string]any, secret bool) string {
 	switch name {
 	case "required":
 		if _, ok := setFields[fieldPath]; !ok {
@@ -117,7 +119,7 @@ func applyRule(fv reflect.Value, name, arg, fieldPath, key string, setFields map
 			return fmt.Sprintf("invalid min=%q on tag", arg)
 		}
 		if !numericAtLeast(fv, limit) {
-			return fmt.Sprintf("must be >= %v, got %v", arg, fv.Interface())
+			return fmt.Sprintf("must be >= %v, got %v", arg, displayValue(secret, fv.Interface()))
 		}
 	case "max":
 		limit, err := strconv.ParseFloat(arg, 64)
@@ -125,7 +127,7 @@ func applyRule(fv reflect.Value, name, arg, fieldPath, key string, setFields map
 			return fmt.Sprintf("invalid max=%q on tag", arg)
 		}
 		if !numericAtMost(fv, limit) {
-			return fmt.Sprintf("must be <= %v, got %v", arg, fv.Interface())
+			return fmt.Sprintf("must be <= %v, got %v", arg, displayValue(secret, fv.Interface()))
 		}
 	case "gt":
 		limit, err := strconv.ParseFloat(arg, 64)
@@ -133,7 +135,7 @@ func applyRule(fv reflect.Value, name, arg, fieldPath, key string, setFields map
 			return fmt.Sprintf("invalid gt=%q on tag", arg)
 		}
 		if !numericGreaterThan(fv, limit) {
-			return fmt.Sprintf("must be > %v, got %v", arg, fv.Interface())
+			return fmt.Sprintf("must be > %v, got %v", arg, displayValue(secret, fv.Interface()))
 		}
 	case "lt":
 		limit, err := strconv.ParseFloat(arg, 64)
@@ -141,7 +143,7 @@ func applyRule(fv reflect.Value, name, arg, fieldPath, key string, setFields map
 			return fmt.Sprintf("invalid lt=%q on tag", arg)
 		}
 		if !numericLessThan(fv, limit) {
-			return fmt.Sprintf("must be < %v, got %v", arg, fv.Interface())
+			return fmt.Sprintf("must be < %v, got %v", arg, displayValue(secret, fv.Interface()))
 		}
 	case "oneof":
 		options := strings.Fields(arg)
@@ -151,17 +153,20 @@ func applyRule(fv reflect.Value, name, arg, fieldPath, key string, setFields map
 				return ""
 			}
 		}
-		msg := fmt.Sprintf("must be one of %v, got %q", options, got)
-		if suggestion := uniqueCloseString(got, options); suggestion != "" {
-			msg += fmt.Sprintf(` (did you mean %q?)`, suggestion)
+		msg := fmt.Sprintf("must be one of %v, got %s", options, displayQuoted(secret, got))
+		// Suggestions can leak partial value info; never suggest for secrets.
+		if !secret {
+			if suggestion := uniqueCloseString(got, options); suggestion != "" {
+				msg += fmt.Sprintf(` (did you mean %q?)`, suggestion)
+			}
 		}
 		return msg
 	case "regexp":
-		return applyRegexp(fv, arg)
+		return applyRegexp(fv, arg, secret)
 	case "url":
-		return applyURL(fv)
+		return applyURL(fv, secret)
 	case "email":
-		return applyEmail(fv)
+		return applyEmail(fv, secret)
 	}
 	return ""
 }
@@ -173,7 +178,7 @@ func requireString(fv reflect.Value, rule string) (string, string) {
 	return fv.String(), ""
 }
 
-func applyRegexp(fv reflect.Value, pattern string) string {
+func applyRegexp(fv reflect.Value, pattern string, secret bool) string {
 	s, bad := requireString(fv, "regexp")
 	if bad != "" {
 		return bad
@@ -183,28 +188,36 @@ func applyRegexp(fv reflect.Value, pattern string) string {
 		return fmt.Sprintf("invalid regexp pattern %q on field: %v", pattern, err)
 	}
 	if !re.MatchString(s) {
-		return fmt.Sprintf("must match pattern %q, got %q", pattern, s)
+		return fmt.Sprintf("must match pattern %q, got %s", pattern, displayQuoted(secret, s))
 	}
 	return ""
 }
 
-func applyURL(fv reflect.Value) string {
+func applyURL(fv reflect.Value, secret bool) string {
 	s, bad := requireString(fv, "url")
 	if bad != "" {
 		return bad
 	}
 	if _, err := url.ParseRequestURI(s); err != nil {
+		if secret {
+			// url.Error often embeds the input string; drop it when secret.
+			return fmt.Sprintf("must be a valid URL, got %s", displayQuoted(true, s))
+		}
 		return fmt.Sprintf("must be a valid URL, got %q: %v", s, err)
 	}
 	return ""
 }
 
-func applyEmail(fv reflect.Value) string {
+func applyEmail(fv reflect.Value, secret bool) string {
 	s, bad := requireString(fv, "email")
 	if bad != "" {
 		return bad
 	}
 	if _, err := mail.ParseAddress(s); err != nil {
+		if secret {
+			// mail.ParseAddress errors may embed the address; drop them.
+			return fmt.Sprintf("must be a valid email address, got %s", displayQuoted(true, s))
+		}
 		return fmt.Sprintf("must be a valid email address, got %q: %v", s, err)
 	}
 	return ""

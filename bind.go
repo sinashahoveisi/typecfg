@@ -71,12 +71,14 @@ func bindStruct(v reflect.Value, data map[string]any, pathPrefix string, errs *[
 			continue
 		}
 
+		secret := isSecret(field)
+
 		if !present {
 			if def, ok := field.Tag.Lookup("default"); ok {
 				if err := setScalar(fv, def, layout); err != nil {
 					*errs = append(*errs, &FieldError{
 						Field: fieldPath, Tag: "default",
-						Reason: fmt.Sprintf("invalid default value %q: %v", def, err),
+						Reason: defaultTagReason(secret, def, err),
 					})
 				} else {
 					setFields[fieldPath] = struct{}{}
@@ -94,7 +96,7 @@ func bindStruct(v reflect.Value, data map[string]any, pathPrefix string, errs *[
 					Field:   fieldPath,
 					Tag:     "type",
 					Sources: []string{"cfg:" + key},
-					Reason:  err.Error(),
+					Reason:  bindTypeReason(secret, fv.Type(), err),
 				})
 			} else {
 				setFields[fieldPath] = struct{}{}
@@ -108,7 +110,7 @@ func bindStruct(v reflect.Value, data map[string]any, pathPrefix string, errs *[
 					Field:   fieldPath,
 					Tag:     "type",
 					Sources: []string{"cfg:" + key},
-					Reason:  err.Error(),
+					Reason:  bindTypeReason(secret, fv.Type(), err),
 				})
 			} else {
 				setFields[fieldPath] = struct{}{}
@@ -122,7 +124,7 @@ func bindStruct(v reflect.Value, data map[string]any, pathPrefix string, errs *[
 				Field:   fieldPath,
 				Tag:     "type",
 				Sources: []string{"cfg:" + key},
-				Reason:  err.Error(),
+				Reason:  bindTypeReason(secret, fv.Type(), err),
 			})
 		} else {
 			setFields[fieldPath] = struct{}{}
