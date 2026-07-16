@@ -7,6 +7,7 @@ go 1.22
 
 use (
 	.
+	./consul
 	./examples/basic
 	./jsonschema
 	./sources
@@ -17,3 +18,5 @@ replace github.com/sinashahoveisi/typecfg v0.1.0 => .
 replace github.com/sinashahoveisi/typecfg/sources v0.1.0 => ./sources
 
 replace github.com/sinashahoveisi/typecfg/jsonschema v0.1.0 => ./jsonschema
+
+replace github.com/sinashahoveisi/typecfg/consul v0.1.0 => ./consul
