@@ -11,6 +11,21 @@ cd typecfg
 # go.work is committed; no extra setup needed
 ```
 
+The committed `go.work` includes versioned `replace` directives so builds
+work before the root module is published. Once `v0.1.0` is on the module
+proxy, those replaces can be removed (matching the `use`-only pattern in
+resilium).
+
+Without `replace`, `go build` inside `sources/` fails because Go still
+tries to resolve `github.com/sinashahoveisi/typecfg@v0.1.0` from the
+network:
+
+```
+json.go:9:2: github.com/sinashahoveisi/typecfg@v0.1.0: reading
+github.com/sinashahoveisi/typecfg/go.mod at revision v0.1.0:
+... fatal: repository 'https://github.com/sinashahoveisi/typecfg/' not found
+```
+
 ## Running tests
 
 From the repo root (core module):

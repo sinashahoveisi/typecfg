@@ -121,3 +121,17 @@ func TestYAMLFile_HotReloadAtomicReplace(t *testing.T) {
 		t.Fatal("timed out waiting for hot reload after atomic replace")
 	}
 }
+
+func TestYAMLFile_EnvSourceOverride(t *testing.T) {
+	path := writeYAML(t, "server:\n  port: 8080\nlog:\n  level: info\n")
+	t.Setenv("APP_SERVER_PORT", "9090")
+
+	loader := typecfg.New[testConfig](NewYAMLFile(path), typecfg.NewEnvSource("APP"))
+	cfg, err := loader.Load(context.Background())
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if cfg.Server.Port != 9090 {
+		t.Errorf("Port = %d, want 9090 (env should override yaml)", cfg.Server.Port)
+	}
+}

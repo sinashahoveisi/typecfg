@@ -20,5 +20,22 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
-- File sources moved to `github.com/sinashahoveisi/typecfg/sources` submodule;
-  core module has zero third-party dependencies
+- **BREAKING:** `NewYAMLFile` / `YAMLFile` and `NewJSONFile` / `JSONFile`
+  moved from `github.com/sinashahoveisi/typecfg` to
+  `github.com/sinashahoveisi/typecfg/sources`. Update imports:
+
+  ```go
+  // before
+  import "github.com/sinashahoveisi/typecfg"
+  typecfg.NewYAMLFile("config.yaml")
+
+  // after
+  import (
+      "github.com/sinashahoveisi/typecfg"
+      "github.com/sinashahoveisi/typecfg/sources"
+  )
+  sources.NewYAMLFile("config.yaml")
+  ```
+
+  Core module now has zero third-party dependencies; file sources that
+  pull in fsnotify/yaml.v3 live in the `sources/` submodule.
