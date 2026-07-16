@@ -11,20 +11,21 @@ cd typecfg
 # go.work is committed; no extra setup needed
 ```
 
-The committed `go.work` includes versioned `replace` directives so builds
-work before the root module is published. Once `v0.1.0` is on the module
-proxy, those replaces can be removed (matching the `use`-only pattern in
-resilium).
+`go.work` lists all three modules with `use`, plus versioned `replace`
+directives for both the root module and `sources/`.
 
-Without `replace`, `go build` inside `sources/` fails because Go still
-tries to resolve `github.com/sinashahoveisi/typecfg@v0.1.0` from the
-network:
+The root module's `v0.1.0` tag is published on GitHub, but the nested
+`sources/` module is **not** yet tagged as `sources/v0.1.0`. Without the
+`replace` for `github.com/sinashahoveisi/typecfg/sources`, `go build`
+tries to fetch that revision and fails:
 
 ```
-json.go:9:2: github.com/sinashahoveisi/typecfg@v0.1.0: reading
-github.com/sinashahoveisi/typecfg/go.mod at revision v0.1.0:
-... fatal: repository 'https://github.com/sinashahoveisi/typecfg/' not found
+github.com/sinashahoveisi/typecfg/sources@v0.1.0: reading
+.../sources/go.mod at revision sources/v0.1.0: unknown revision sources/v0.1.0
 ```
+
+Once `sources/v0.1.0` is tagged and pushed, the `replace` lines can be
+removed for a use-only workspace (matching resilium).
 
 ## Running tests
 

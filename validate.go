@@ -2,7 +2,10 @@ package typecfg
 
 import (
 	"fmt"
+	"net/mail"
+	"net/url"
 	"reflect"
+	"regexp"
 	"strconv"
 	"strings"
 )
@@ -103,6 +106,22 @@ func applyRule(fv reflect.Value, name, arg, fieldPath string, setFields map[stri
 		if !numericAtMost(fv, limit) {
 			return fmt.Sprintf("must be <= %v, got %v", arg, fv.Interface())
 		}
+	case "gt":
+		limit, err := strconv.ParseFloat(arg, 64)
+		if err != nil {
+			return fmt.Sprintf("invalid gt=%q on tag", arg)
+		}
+		if !numericGreaterThan(fv, limit) {
+			return fmt.Sprintf("must be > %v, got %v", arg, fv.Interface())
+		}
+	case "lt":
+		limit, err := strconv.ParseFloat(arg, 64)
+		if err != nil {
+			return fmt.Sprintf("invalid lt=%q on tag", arg)
+		}
+		if !numericLessThan(fv, limit) {
+			return fmt.Sprintf("must be < %v, got %v", arg, fv.Interface())
+		}
 	case "oneof":
 		options := strings.Fields(arg)
 		got := fmt.Sprintf("%v", fv.Interface())
@@ -112,6 +131,56 @@ func applyRule(fv reflect.Value, name, arg, fieldPath string, setFields map[stri
 			}
 		}
 		return fmt.Sprintf("must be one of %v, got %q", options, got)
+	case "regexp":
+		return applyRegexp(fv, arg)
+	case "url":
+		return applyURL(fv)
+	case "email":
+		return applyEmail(fv)
+	}
+	return ""
+}
+
+func requireString(fv reflect.Value, rule string) (string, string) {
+	if fv.Kind() != reflect.String {
+		return "", fmt.Sprintf("%s is only valid on string fields, got %s", rule, fv.Kind())
+	}
+	return fv.String(), ""
+}
+
+func applyRegexp(fv reflect.Value, pattern string) string {
+	s, bad := requireString(fv, "regexp")
+	if bad != "" {
+		return bad
+	}
+	re, err := regexp.Compile(pattern)
+	if err != nil {
+		return fmt.Sprintf("invalid regexp pattern %q on field: %v", pattern, err)
+	}
+	if !re.MatchString(s) {
+		return fmt.Sprintf("must match pattern %q, got %q", pattern, s)
+	}
+	return ""
+}
+
+func applyURL(fv reflect.Value) string {
+	s, bad := requireString(fv, "url")
+	if bad != "" {
+		return bad
+	}
+	if _, err := url.ParseRequestURI(s); err != nil {
+		return fmt.Sprintf("must be a valid URL, got %q: %v", s, err)
+	}
+	return ""
+}
+
+func applyEmail(fv reflect.Value) string {
+	s, bad := requireString(fv, "email")
+	if bad != "" {
+		return bad
+	}
+	if _, err := mail.ParseAddress(s); err != nil {
+		return fmt.Sprintf("must be a valid email address, got %q: %v", s, err)
 	}
 	return ""
 }
@@ -124,6 +193,16 @@ func numericAtLeast(fv reflect.Value, limit float64) bool {
 func numericAtMost(fv reflect.Value, limit float64) bool {
 	f, ok := toFloat(fv)
 	return !ok || f <= limit
+}
+
+func numericGreaterThan(fv reflect.Value, limit float64) bool {
+	f, ok := toFloat(fv)
+	return !ok || f > limit
+}
+
+func numericLessThan(fv reflect.Value, limit float64) bool {
+	f, ok := toFloat(fv)
+	return !ok || f < limit
 }
 
 func toFloat(fv reflect.Value) (float64, bool) {

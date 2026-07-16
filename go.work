@@ -1,8 +1,8 @@
-// Local multi-module workspace. Versioned replace directives are required
-// until github.com/sinashahoveisi/typecfg v0.1.0 is published to the module
-// proxy (resilium uses use-only because its root module is already published).
-// Without replace, `go build` in sources/ fails looking up the unpublished
-// root module on GitHub (see CONTRIBUTING.md).
+// Local multi-module workspace. Versioned replace directives are still
+// required for github.com/sinashahoveisi/typecfg/sources because the
+// nested module is not yet tagged as sources/v0.1.0 on GitHub (only the
+// root module has v0.1.0). Without replace, Go looks up
+// sources/v0.1.0 and fails with "unknown revision".
 go 1.22
 
 use (
