@@ -19,10 +19,13 @@ type Validator interface {
 
 // validate walks the struct applying `validate:"..."` tag rules and
 // collects every violation instead of stopping at the first one.
-func validate(dst any, setFields map[string]struct{}) []*FieldError {
+// data is the merged source map at the root (and nested maps when
+// recursing); used only for "did you mean" suggestions on missing
+// required fields.
+func validate(dst any, setFields map[string]struct{}, data map[string]any) []*FieldError {
 	v := reflect.ValueOf(dst).Elem()
 	var errs []*FieldError
-	validateStruct(v, "", &errs, setFields)
+	validateStruct(v, "", &errs, setFields, data)
 
 	if validator, ok := dst.(Validator); ok {
 		if err := validator.Validate(); err != nil {
@@ -32,7 +35,7 @@ func validate(dst any, setFields map[string]struct{}) []*FieldError {
 	return errs
 }
 
-func validateStruct(v reflect.Value, pathPrefix string, errs *[]*FieldError, setFields map[string]struct{}) {
+func validateStruct(v reflect.Value, pathPrefix string, errs *[]*FieldError, setFields map[string]struct{}, data map[string]any) {
 	t := v.Type()
 	for i := 0; i < t.NumField(); i++ {
 		field := t.Field(i)
@@ -47,9 +50,9 @@ func validateStruct(v reflect.Value, pathPrefix string, errs *[]*FieldError, set
 		}
 
 		if fv.Kind() == reflect.Struct {
-			validateStruct(fv, fieldPath, errs, setFields)
+			validateStruct(fv, fieldPath, errs, setFields, nestedDataMap(data, key))
 		} else if fv.Kind() == reflect.Ptr && !fv.IsNil() && fv.Elem().Kind() == reflect.Struct {
-			validateStruct(fv.Elem(), fieldPath, errs, setFields)
+			validateStruct(fv.Elem(), fieldPath, errs, setFields, nestedDataMap(data, key))
 		}
 
 		rules, ok := field.Tag.Lookup("validate")
@@ -62,7 +65,7 @@ func validateStruct(v reflect.Value, pathPrefix string, errs *[]*FieldError, set
 				continue
 			}
 			name, arg, _ := strings.Cut(rule, "=")
-			if err := applyRule(fv, name, arg, fieldPath, setFields); err != "" {
+			if err := applyRule(fv, name, arg, fieldPath, key, setFields, data); err != "" {
 				*errs = append(*errs, &FieldError{
 					Field:   fieldPath,
 					Tag:     name,
@@ -72,6 +75,20 @@ func validateStruct(v reflect.Value, pathPrefix string, errs *[]*FieldError, set
 			}
 		}
 	}
+}
+
+func nestedDataMap(data map[string]any, key string) map[string]any {
+	if data == nil {
+		return nil
+	}
+	raw, ok := lookupCaseInsensitive(data, key)
+	if !ok {
+		return nil
+	}
+	if m, ok := raw.(map[string]any); ok {
+		return m
+	}
+	return nil
 }
 
 func possibleSources(field reflect.StructField, key string) []string {
@@ -84,11 +101,15 @@ func possibleSources(field reflect.StructField, key string) []string {
 
 // applyRule returns a non-empty human-readable reason if the rule fails,
 // or "" if it passes.
-func applyRule(fv reflect.Value, name, arg, fieldPath string, setFields map[string]struct{}) string {
+func applyRule(fv reflect.Value, name, arg, fieldPath, key string, setFields map[string]struct{}, data map[string]any) string {
 	switch name {
 	case "required":
 		if _, ok := setFields[fieldPath]; !ok {
-			return "is required but was not set"
+			msg := "is required but was not set"
+			if suggestion := uniqueCloseKey(key, data); suggestion != "" {
+				msg += fmt.Sprintf(` (did you mean %q? a similar key was found in the source)`, suggestion)
+			}
+			return msg
 		}
 	case "min":
 		limit, err := strconv.ParseFloat(arg, 64)
@@ -130,7 +151,11 @@ func applyRule(fv reflect.Value, name, arg, fieldPath string, setFields map[stri
 				return ""
 			}
 		}
-		return fmt.Sprintf("must be one of %v, got %q", options, got)
+		msg := fmt.Sprintf("must be one of %v, got %q", options, got)
+		if suggestion := uniqueCloseString(got, options); suggestion != "" {
+			msg += fmt.Sprintf(` (did you mean %q?)`, suggestion)
+		}
+		return msg
 	case "regexp":
 		return applyRegexp(fv, arg)
 	case "url":
@@ -218,4 +243,78 @@ func toFloat(fv reflect.Value) (float64, bool) {
 	default:
 		return 0, false
 	}
+}
+
+// uniqueCloseKey returns the single sibling key in data within edit
+// distance <= 2 of expected, or "" if zero or multiple candidates match.
+func uniqueCloseKey(expected string, data map[string]any) string {
+	if data == nil {
+		return ""
+	}
+	candidates := make([]string, 0, len(data))
+	for k := range data {
+		candidates = append(candidates, k)
+	}
+	return uniqueCloseString(expected, candidates)
+}
+
+func uniqueCloseString(target string, candidates []string) string {
+	var match string
+	found := 0
+	for _, c := range candidates {
+		if c == target {
+			continue
+		}
+		if levenshtein(target, c) <= 2 {
+			found++
+			match = c
+			if found > 1 {
+				return ""
+			}
+		}
+	}
+	if found == 1 {
+		return match
+	}
+	return ""
+}
+
+// levenshtein returns the classic edit distance between a and b.
+func levenshtein(a, b string) int {
+	if a == b {
+		return 0
+	}
+	la, lb := len(a), len(b)
+	if la == 0 {
+		return lb
+	}
+	if lb == 0 {
+		return la
+	}
+	prev := make([]int, lb+1)
+	curr := make([]int, lb+1)
+	for j := 0; j <= lb; j++ {
+		prev[j] = j
+	}
+	for i := 1; i <= la; i++ {
+		curr[0] = i
+		for j := 1; j <= lb; j++ {
+			cost := 1
+			if a[i-1] == b[j-1] {
+				cost = 0
+			}
+			del := prev[j] + 1
+			ins := curr[j-1] + 1
+			sub := prev[j-1] + cost
+			curr[j] = del
+			if ins < curr[j] {
+				curr[j] = ins
+			}
+			if sub < curr[j] {
+				curr[j] = sub
+			}
+		}
+		prev, curr = curr, prev
+	}
+	return prev[lb]
 }
