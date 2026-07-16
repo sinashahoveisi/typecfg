@@ -15,6 +15,7 @@
 
 ## Known gaps (post-v0.1)
 - [ ] Parent-directory symlink swap (Kubernetes ConfigMap `..data` style atomic mount updates) is not yet handled — only the target file's own replacement is covered. Needs re-registration logic when the watched directory itself is swapped.
+- [ ] `ConsulSource` / `EtcdSource` CI tests use fake clients only (injected KV/Watch fakes), not a real Consul or etcd server — wire-compatibility with live clusters is unverified as of this release.
 
 ## v0.2 — stronger validation and binding
 - [x] Support `time.Time` (RFC3339 + custom `layout` tag), numeric slices ([]int/[]int8/../[]uint*/[]float32/[]float64) from both native YAML/JSON sequences and comma-separated strings, and `map[string]string` (native nested maps from YAML/JSON, JSON-encoded strings from flat sources like env)
@@ -23,9 +24,12 @@
 - [x] Optional JSON Schema support for heavier validation
 
 ## v0.3 — more sources
-- [ ] `ConsulSource` / `EtcdSource` (implementing `Watchable`)
-- [ ] `RemoteHTTPSource` for an internal config server
-- [ ] Secret masking in logs/errors (fields tagged `secret:"true"` never printed)
+- [x] `ConsulSource` (consul/ submodule; Consul KV + blocking Watch)
+  — caveat: unit tests use a fake KV client; real Consul wire-compatibility is unverified in CI
+- [x] `EtcdSource` (etcd/ submodule; etcd KV + revision Watch)
+  — caveat: unit tests use a fake etcd client; real etcd wire-compatibility is unverified in CI
+- [x] `RemoteHTTPSource` for an internal config server
+- [x] Secret masking in logs/errors (fields tagged `secret:"true"` never printed in FieldError.Reason)
 
 ## v0.4 — observability integration
 - Inspired by the previous package (Circuit Breaker + Retry + Observability):

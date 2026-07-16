@@ -9,7 +9,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Added
 
 - Generic `Loader[T]` with `Load`, `Get`, `Watch`, and `Stop`
-- Sources: `EnvSource` (core), `YAMLFile` and `JSONFile` (`sources/` module)
+- Sources: `EnvSource` (core), `YAMLFile`, `JSONFile`, and
+  `RemoteHTTPSource` (`sources/` module; HTTP polling Watchable)
+- `ConsulSource` in `consul/` submodule (Consul KV list + blocking-query Watch)
+- `EtcdSource` in `etcd/` submodule (etcd Get/Watch with revision baseline)
 - Ordered source merging with later sources overriding earlier ones
 - Reflection-based binding with `cfg` and `default` tags
 - Validation: `required`, `min`, `max`, `oneof` plus `Validator` interface
@@ -20,6 +23,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Binding for `time.Time` (RFC3339 + optional `layout` tag), numeric
   slices (`[]int`, `[]int64`, `[]float64`, …), and `map[string]string`
   (nested map coercion or JSON from flat string sources)
+- `secret:"true"` struct tag: bind/validate error messages redact the
+  field value (`***REDACTED***`); oneof suggestions suppressed for secrets
 
 ### Changed
 
