@@ -51,3 +51,9 @@ Level string `cfg:"level" default:"info" validate:"oneof=debug info warn error"`
 
 - `level: verbose` → fails: `must be one of [debug info warn error], got "verbose"`
 - `level: debug` → passes
+
+## Related
+
+See [binding-types.md](./binding-types.md) for how `time.Time`, numeric
+slices, and `map[string]string` are populated from YAML/JSON/env before
+validation runs.

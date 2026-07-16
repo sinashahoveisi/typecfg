@@ -17,6 +17,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Precise errors: `FieldError`, `ValidationError`, `SourceError`
 - Presence tracking for `required` (distinguishes unset from explicit zero)
 - Directory-based file watching for atomic rename/replace updates
+- Binding for `time.Time` (RFC3339 + optional `layout` tag), numeric
+  slices (`[]int`, `[]int64`, `[]float64`, …), and `map[string]string`
+  (nested map coercion or JSON from flat string sources)
 
 ### Changed
 

@@ -2,8 +2,10 @@ package sources
 
 import (
 	"context"
+	"errors"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -133,5 +135,86 @@ func TestYAMLFile_EnvSourceOverride(t *testing.T) {
 	}
 	if cfg.Server.Port != 9090 {
 		t.Errorf("Port = %d, want 9090 (env should override yaml)", cfg.Server.Port)
+	}
+}
+
+func TestYAMLFile_StringMapNested(t *testing.T) {
+	type labelsConfig struct {
+		Labels map[string]string `cfg:"labels"`
+	}
+	path := writeYAML(t, "labels:\n  env: prod\n  team: backend\n")
+	loader := typecfg.New[labelsConfig](NewYAMLFile(path))
+	cfg, err := loader.Load(context.Background())
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if cfg.Labels["env"] != "prod" || cfg.Labels["team"] != "backend" {
+		t.Errorf("Labels = %v, want env=prod team=backend", cfg.Labels)
+	}
+}
+
+func TestYAMLFile_IntSliceFlowStyle(t *testing.T) {
+	type portsConfig struct {
+		Ports []int `cfg:"ports"`
+	}
+	path := writeYAML(t, "ports: [8080, 8443]\n")
+	loader := typecfg.New[portsConfig](NewYAMLFile(path))
+	cfg, err := loader.Load(context.Background())
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(cfg.Ports) != 2 || cfg.Ports[0] != 8080 || cfg.Ports[1] != 8443 {
+		t.Errorf("Ports = %v, want [8080 8443]", cfg.Ports)
+	}
+}
+
+func TestYAMLFile_IntSliceBlockStyle(t *testing.T) {
+	type portsConfig struct {
+		Ports []int `cfg:"ports"`
+	}
+	path := writeYAML(t, "ports:\n  - 8080\n  - 8443\n")
+	loader := typecfg.New[portsConfig](NewYAMLFile(path))
+	cfg, err := loader.Load(context.Background())
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(cfg.Ports) != 2 || cfg.Ports[0] != 8080 || cfg.Ports[1] != 8443 {
+		t.Errorf("Ports = %v, want [8080 8443]", cfg.Ports)
+	}
+}
+
+func TestYAMLFile_StringSliceNativeList(t *testing.T) {
+	type namesConfig struct {
+		Names []string `cfg:"names"`
+	}
+	path := writeYAML(t, "names:\n  - api\n  - worker\n")
+	loader := typecfg.New[namesConfig](NewYAMLFile(path))
+	cfg, err := loader.Load(context.Background())
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(cfg.Names) != 2 || cfg.Names[0] != "api" || cfg.Names[1] != "worker" {
+		t.Errorf("Names = %v, want [api worker]", cfg.Names)
+	}
+}
+
+func TestYAMLFile_IntSliceNativeListInvalidElement(t *testing.T) {
+	type portsConfig struct {
+		Ports []int `cfg:"ports"`
+	}
+	path := writeYAML(t, "ports: [8080, bad, 8443]\n")
+	loader := typecfg.New[portsConfig](NewYAMLFile(path))
+	_, err := loader.Load(context.Background())
+	if err == nil {
+		t.Fatal("expected parse error")
+	}
+	var verr *typecfg.ValidationError
+	if !errors.As(err, &verr) {
+		t.Fatalf("expected *ValidationError, got %T: %v", err, err)
+	}
+	reason := verr.Errors[0].Reason
+	t.Logf("reason: %s", reason)
+	if !strings.Contains(reason, `element 1 ("bad")`) {
+		t.Errorf("Reason = %q, want index 1 bad element", reason)
 	}
 }
