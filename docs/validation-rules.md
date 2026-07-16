@@ -57,3 +57,5 @@ Level string `cfg:"level" default:"info" validate:"oneof=debug info warn error"`
 See [binding-types.md](./binding-types.md) for how `time.Time`, numeric
 slices, and `map[string]string` are populated from YAML/JSON/env before
 validation runs.
+
+Optional JSON Schema checks (separate module): [json-schema.md](./json-schema.md).

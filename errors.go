@@ -66,3 +66,16 @@ func (e *SourceError) Error() string {
 }
 
 func (e *SourceError) Unwrap() error { return e.Err }
+
+// SchemaError wraps a failure from Loader.SetRawValidator (e.g. JSON
+// Schema). It is distinct from SourceError (a Source read/parse failure)
+// and ValidationError (struct-tag / Validator failures).
+type SchemaError struct {
+	Err error
+}
+
+func (e *SchemaError) Error() string {
+	return fmt.Sprintf("typecfg: schema validation failed: %v", e.Err)
+}
+
+func (e *SchemaError) Unwrap() error { return e.Err }

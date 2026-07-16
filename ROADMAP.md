@@ -19,8 +19,8 @@
 ## v0.2 — stronger validation and binding
 - [x] Support `time.Time` (RFC3339 + custom `layout` tag), numeric slices ([]int/[]int8/../[]uint*/[]float32/[]float64) from both native YAML/JSON sequences and comma-separated strings, and `map[string]string` (native nested maps from YAML/JSON, JSON-encoded strings from flat sources like env)
 - [x] More validate rules: `gt`, `lt`, `regexp`, `url`, `email`
-- [ ] Error messages with suggestions (e.g. "did you mean `Port`?")
-- [ ] Optional JSON Schema support for heavier validation
+- [x] Error messages with suggestions (e.g. "did you mean `Port`?")
+- [x] Optional JSON Schema support for heavier validation
 
 ## v0.3 — more sources
 - [ ] `ConsulSource` / `EtcdSource` (implementing `Watchable`)

@@ -38,9 +38,10 @@ type Loader[T any] struct {
 	cancel   context.CancelFunc
 	stops    []func() error
 
-	onReload    []func(old, new *T)
-	onError     []func(error)
-	stopWatchWG sync.WaitGroup
+	onReload     []func(old, new *T)
+	onError      []func(error)
+	stopWatchWG  sync.WaitGroup
+	rawValidator func(map[string]any) error
 }
 
 // New creates a Loader that reads from the given sources, in order.
@@ -64,11 +65,19 @@ func (l *Loader[T]) Load(ctx context.Context) (*T, error) {
 	}
 
 	cfg := new(T)
+	l.mu.RLock()
+	rawValidator := l.rawValidator
+	l.mu.RUnlock()
+	if rawValidator != nil {
+		if err := rawValidator(merged); err != nil {
+			return nil, &SchemaError{Err: err}
+		}
+	}
 	bindErrs, setFields := bind(cfg, merged)
 	if len(bindErrs) > 0 {
 		return nil, &ValidationError{Errors: bindErrs}
 	}
-	if errs := validate(cfg, setFields); len(errs) > 0 {
+	if errs := validate(cfg, setFields, merged); len(errs) > 0 {
 		return nil, &ValidationError{Errors: errs}
 	}
 
@@ -104,6 +113,17 @@ func (l *Loader[T]) OnError(fn func(error)) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 	l.onError = append(l.onError, fn)
+}
+
+// SetRawValidator registers an optional hook invoked with the merged raw
+// config map after sources are loaded and merged, but before bind and
+// struct-tag validation. Use it for opt-in checks such as JSON Schema
+// (see the jsonschema/ submodule). If fn is nil, the hook is cleared.
+// When unset, Load behaves exactly as before.
+func (l *Loader[T]) SetRawValidator(fn func(map[string]any) error) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	l.rawValidator = fn
 }
 
 // Watch starts watching all Watchable sources in the background. Every
