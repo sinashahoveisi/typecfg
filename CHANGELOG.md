@@ -8,6 +8,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- `typecfg-gen` (`cmd/typecfg-gen`) emits a `GeneratedBinder[T]` for a named
+  config struct; `NewGenerated` wires it into `Loader` with the same merge/
+  Watch/hooks/`SetRawValidator` behavior as `New[T]` (see `docs/codegen.md`)
+- `benchmarks/` submodule: reflection vs generated `Load` comparisons
+  (`go test -bench=. -benchmem -count=3`)
 - Generic `Loader[T]` with `Load`, `Get`, `Watch`, and `Stop`
 - Sources: `EnvSource` (core), `YAMLFile`, `JSONFile`, and
   `RemoteHTTPSource` (`sources/` module; HTTP polling Watchable)

@@ -16,6 +16,7 @@
 ## Known gaps (post-v0.1)
 - [ ] Parent-directory symlink swap (Kubernetes ConfigMap `..data` style atomic mount updates) is not yet handled — only the target file's own replacement is covered. Needs re-registration logic when the watched directory itself is swapped.
 - [ ] `ConsulSource` / `EtcdSource` CI tests use fake clients only (injected KV/Watch fakes), not a real Consul or etcd server — wire-compatibility with live clusters is unverified as of this release.
+- [ ] `bind()`: integer fields narrower than the parsed width (e.g. `int8`, `int16`) do not range-check and can silently overflow rather than erroring.
 
 ## v0.2 — stronger validation and binding
 - [x] Support `time.Time` (RFC3339 + custom `layout` tag), numeric slices ([]int/[]int8/../[]uint*/[]float32/[]float64) from both native YAML/JSON sequences and comma-separated strings, and `map[string]string` (native nested maps from YAML/JSON, JSON-encoded strings from flat sources like env)
@@ -36,8 +37,8 @@
 - [x] `OnReload`/`OnError` hooks wired to OpenTelemetry metrics out of the box (`config_reload_total`, `config_reload_errors_total`) via `otel/` submodule
 - [x] Optional structured logging (`Loader.SetLogger` + `Diff`) per reload, including a diff of changed fields (secrets redacted)
 ## v0.5 — codegen (optional, zero-reflection)
-- [ ] `typecfg generate` command that emits Bind/Validate code at build time (similar to `cfgx`, but with hot-reload support, not just build-time baking)
-- [ ] Reflection vs codegen benchmarks
+- [x] `typecfg-gen` command that emits Bind/Validate code at build time (`cmd/typecfg-gen`, `NewGenerated`)
+- [x] Reflection vs codegen benchmarks (`benchmarks/` submodule)
 
 ## v1.0
 - [ ] API freeze
