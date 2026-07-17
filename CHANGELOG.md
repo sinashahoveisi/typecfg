@@ -13,6 +13,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   `RemoteHTTPSource` (`sources/` module; HTTP polling Watchable)
 - `ConsulSource` in `consul/` submodule (Consul KV list + blocking-query Watch)
 - `EtcdSource` in `etcd/` submodule (etcd Get/Watch with revision baseline)
+- `Diff[T]` for config field changes; `Loader.SetLogger` for slog hot-reload logs (secret values redacted)
+- `otel/` submodule: `Register` wires `config_reload_total` / `config_reload_errors_total`
 - Ordered source merging with later sources overriding earlier ones
 - Reflection-based binding with `cfg` and `default` tags
 - Validation: `required`, `min`, `max`, `oneof` plus `Validator` interface

@@ -33,9 +33,8 @@
 
 ## v0.4 — observability integration
 - Inspired by the previous package (Circuit Breaker + Retry + Observability):
-- [ ] `OnReload`/`OnError` hooks wired to OpenTelemetry metrics out of the box (`config_reload_total`, `config_reload_errors_total`)
-- [ ] Optional structured logging (slog) per reload, including a diff of changed fields
-
+- [x] `OnReload`/`OnError` hooks wired to OpenTelemetry metrics out of the box (`config_reload_total`, `config_reload_errors_total`) via `otel/` submodule
+- [x] Optional structured logging (`Loader.SetLogger` + `Diff`) per reload, including a diff of changed fields (secrets redacted)
 ## v0.5 — codegen (optional, zero-reflection)
 - [ ] `typecfg generate` command that emits Bind/Validate code at build time (similar to `cfgx`, but with hot-reload support, not just build-time baking)
 - [ ] Reflection vs codegen benchmarks
