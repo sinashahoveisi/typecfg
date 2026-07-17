@@ -11,6 +11,8 @@ use (
 	./consul
 	./etcd
 	./examples/basic
+	./examples/doc-snippets
+	./examples/service
 	./integration
 	./jsonschema
 	./otel

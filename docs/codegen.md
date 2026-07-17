@@ -37,7 +37,10 @@ Then run `go generate ./...`.
 ## Wire into Loader
 
 ```go
-loader := typecfg.NewGenerated[Config](ConfigBinder{}, sources...)
+loader := typecfg.NewGenerated[Config](
+	ConfigBinder{},
+	sources.NewYAMLFile("config.yaml"),
+)
 cfg, err := loader.Load(ctx)
 ```
 

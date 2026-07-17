@@ -48,3 +48,24 @@ revisit those assertions on upgrades.
 Run a manual smoke test against a real Consul and/or etcd instance
 before depending on those sources for anything critical. This project
 has not done so as of v1.0.
+
+## Real-world usage period — substituted with test coverage
+
+The project checklist originally called for a real-world usage period
+before v1.0. That was substituted with test-based verification instead
+(examples/doc-snippets/ compiling every documented code sample,
+examples/service/ as a fresh-eyes adoption example under -race).
+
+This substitute covers: stale or broken public-API documentation,
+compile-time friction, and a first-adoption path (YAML+env layering,
+slog integration, Watch-based hot reload, keep-last-good-config
+behavior) exercised under the race detector.
+
+This substitute does NOT cover: multi-day production load, Kubernetes
+ConfigMap `..data` symlink-swap mounts (tracked separately under Known
+gaps), real Consul/etcd wire compatibility (tests use fake clients —
+see the Consul/Etcd entry above), operational failure modes like
+partial writes under load or permission changes, secret-manager
+integration patterns, or whether the API remains ergonomic after weeks
+of real, evolving usage. Treat v1.0 as verified-by-testing, not
+verified-by-production-experience.
