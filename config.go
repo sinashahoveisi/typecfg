@@ -44,6 +44,9 @@ type Loader[T any] struct {
 	stopWatchWG  sync.WaitGroup
 	rawValidator func(map[string]any) error
 	logger       *slog.Logger
+
+	// binder, when non-nil, replaces reflection bind/validate (see NewGenerated).
+	binder GeneratedBinder[T]
 }
 
 // New creates a Loader that reads from the given sources, in order.
@@ -66,7 +69,6 @@ func (l *Loader[T]) Load(ctx context.Context) (*T, error) {
 		merged = mergeMaps(merged, data)
 	}
 
-	cfg := new(T)
 	l.mu.RLock()
 	rawValidator := l.rawValidator
 	l.mu.RUnlock()
@@ -75,11 +77,28 @@ func (l *Loader[T]) Load(ctx context.Context) (*T, error) {
 			return nil, &SchemaError{Err: err}
 		}
 	}
-	bindErrs, setFields := bind(cfg, merged)
+
+	var (
+		cfg       *T
+		bindErrs  []*FieldError
+		setFields map[string]struct{}
+	)
+	if l.binder != nil {
+		cfg, setFields, bindErrs = l.binder.BindGenerated(merged)
+	} else {
+		cfg = new(T)
+		bindErrs, setFields = bind(cfg, merged)
+	}
 	if len(bindErrs) > 0 {
 		return nil, &ValidationError{Errors: bindErrs}
 	}
-	if errs := validate(cfg, setFields, merged); len(errs) > 0 {
+	var errs []*FieldError
+	if l.binder != nil {
+		errs = l.binder.ValidateGenerated(cfg, setFields, merged)
+	} else {
+		errs = validate(cfg, setFields, merged)
+	}
+	if len(errs) > 0 {
 		return nil, &ValidationError{Errors: errs}
 	}
 
