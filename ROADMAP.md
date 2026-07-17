@@ -49,3 +49,4 @@
 - [x] A written semver policy exists with concrete examples from your own project's history
 - [x] Integration tests exercise the full public API together, not
       just units in isolation
+- [x] Goroutine-leak and concurrent-load sanity checks, run with -race
