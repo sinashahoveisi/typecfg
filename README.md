@@ -55,4 +55,16 @@ Full runnable example in [`examples/basic/`](./examples/basic/).
 
 ## Status
 
-v0.1 — API may still change. See [CHANGELOG.md](./CHANGELOG.md).
+v1.0.0 — the API described in this README and docs/ is frozen per
+docs/versioning.md (breaking changes require a major version bump).
+`FieldError.Reason` wording is explicitly excluded from that
+guarantee — see docs/versioning.md.
+
+Two things worth knowing before you rely on this in production:
+- `consul.ConsulSource` and `etcd.EtcdSource` are tested against fake
+  clients only; wire compatibility with a real Consul or etcd server
+  has not been verified by this project. See docs/v1-readiness.md.
+- v1.0 was verified through testing (including a fresh-eyes adoption
+  example and full doc-snippet compilation), not an extended
+  real-world production trial. See docs/v1-readiness.md for exactly
+  what is and isn't covered.
