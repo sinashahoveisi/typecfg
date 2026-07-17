@@ -47,3 +47,5 @@
 - [x] Every exported identifier has a real (not restated-name) doc comment
 - [x] Linter configured and verified to actually run
 - [x] A written semver policy exists with concrete examples from your own project's history
+- [x] Integration tests exercise the full public API together, not
+      just units in isolation
