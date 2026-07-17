@@ -11,6 +11,7 @@ use (
 	./etcd
 	./examples/basic
 	./jsonschema
+	./otel
 	./sources
 )
 
@@ -23,3 +24,5 @@ replace github.com/sinashahoveisi/typecfg/jsonschema v0.1.0 => ./jsonschema
 replace github.com/sinashahoveisi/typecfg/consul v0.1.0 => ./consul
 
 replace github.com/sinashahoveisi/typecfg/etcd v0.1.0 => ./etcd
+
+replace github.com/sinashahoveisi/typecfg/otel v0.1.0 => ./otel
