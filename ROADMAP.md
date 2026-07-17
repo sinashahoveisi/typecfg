@@ -46,4 +46,4 @@
 - [ ] Full docs + production examples (k8s ConfigMap hot reload, multi-env)
 - [x] Every exported identifier has a real (not restated-name) doc comment
 - [x] Linter configured and verified to actually run
-- [ ] Formal semantic versioning commitment
+- [x] A written semver policy exists with concrete examples from your own project's history
