@@ -93,7 +93,7 @@ func TestRegister_ReloadIncrementsTotal(t *testing.T) {
 	if err := loader.Watch(ctx); err != nil {
 		t.Fatal(err)
 	}
-	defer loader.Stop()
+	defer func() { _ = loader.Stop() }()
 
 	src.update(map[string]any{"port": 9090})
 	deadline := time.After(2 * time.Second)
@@ -132,7 +132,7 @@ func TestRegister_ErrorIncrementsErrorsTotal(t *testing.T) {
 	if err := loader.Watch(ctx); err != nil {
 		t.Fatal(err)
 	}
-	defer loader.Stop()
+	defer func() { _ = loader.Stop() }()
 
 	src.update(map[string]any{}) // validation failure
 	deadline := time.After(2 * time.Second)
@@ -171,7 +171,7 @@ func TestRegister_CountersAccumulate(t *testing.T) {
 	if err := loader.Watch(ctx); err != nil {
 		t.Fatal(err)
 	}
-	defer loader.Stop()
+	defer func() { _ = loader.Stop() }()
 
 	waitAtLeast := func(name string, n int64) {
 		t.Helper()

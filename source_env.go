@@ -20,12 +20,18 @@ type EnvSource struct {
 	Delimiter string
 }
 
+// NewEnvSource returns an EnvSource that only considers variables whose names
+// start with prefix (plus the delimiter). An empty prefix considers all env
+// vars — usually undesirable outside small tools.
 func NewEnvSource(prefix string) *EnvSource {
 	return &EnvSource{Prefix: prefix, Delimiter: "_"}
 }
 
+// Name returns "env:<prefix>*" for use in SourceError and FieldError sources.
 func (e *EnvSource) Name() string { return "env:" + e.Prefix + "*" }
 
+// Load scans the process environment into a nested map[string]any. Values
+// remain strings; numeric/bool conversion happens during bind.
 func (e *EnvSource) Load(_ context.Context) (map[string]any, error) {
 	delim := e.Delimiter
 	if delim == "" {

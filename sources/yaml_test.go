@@ -67,7 +67,7 @@ func TestYAMLFile_HotReload(t *testing.T) {
 	if err := loader.Watch(ctx); err != nil {
 		t.Fatalf("watch failed: %v", err)
 	}
-	defer loader.Stop()
+	defer func() { _ = loader.Stop() }()
 
 	if err := os.WriteFile(path, []byte("server:\n  port: 9999\nlog:\n  level: info\n"), 0o644); err != nil {
 		t.Fatal(err)
@@ -104,7 +104,7 @@ func TestYAMLFile_HotReloadAtomicReplace(t *testing.T) {
 	if err := loader.Watch(ctx); err != nil {
 		t.Fatalf("watch failed: %v", err)
 	}
-	defer loader.Stop()
+	defer func() { _ = loader.Stop() }()
 
 	tmp := filepath.Join(dir, "config.yaml.tmp")
 	if err := os.WriteFile(tmp, []byte("server:\n  port: 9999\nlog:\n  level: info\n"), 0o644); err != nil {

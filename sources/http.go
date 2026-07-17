@@ -25,10 +25,14 @@ const (
 // RemoteHTTPSource loads config from an HTTP(S) endpoint serving JSON or
 // YAML. It implements Watchable via polling (there is no push mechanism).
 type RemoteHTTPSource struct {
-	URL          string
-	Client       *http.Client // nil -> http.DefaultClient
-	Headers      map[string]string
-	PollInterval time.Duration // 0 -> 30s
+	// URL is the absolute HTTP(S) endpoint to GET.
+	URL string
+	// Client is the HTTP client used for requests; nil means http.DefaultClient.
+	Client *http.Client
+	// Headers are extra request headers (e.g. Authorization) sent on each GET.
+	Headers map[string]string
+	// PollInterval is the Watch poll period; zero means 30s.
+	PollInterval time.Duration
 	// Format is "json" or "yaml". Empty means infer from Content-Type,
 	// then URL path extension; if neither works, Load returns an error.
 	Format string
@@ -42,6 +46,7 @@ func NewRemoteHTTPSource(rawURL string) *RemoteHTTPSource {
 	return &RemoteHTTPSource{URL: rawURL}
 }
 
+// Name returns "http:<URL>" for SourceError messages.
 func (s *RemoteHTTPSource) Name() string { return "http:" + s.URL }
 
 func (s *RemoteHTTPSource) client() *http.Client {
@@ -51,6 +56,8 @@ func (s *RemoteHTTPSource) client() *http.Client {
 	return http.DefaultClient
 }
 
+// Load GETs URL, parses JSON or YAML into map[string]any, and stores a
+// private snapshot used by Watch for change detection.
 func (s *RemoteHTTPSource) Load(ctx context.Context) (map[string]any, error) {
 	body, contentType, err := s.fetch(ctx)
 	if err != nil {
@@ -86,7 +93,7 @@ func (s *RemoteHTTPSource) fetch(ctx context.Context) ([]byte, string, error) {
 	if err != nil {
 		return nil, "", &typecfg.SourceError{Source: s.Name(), Op: "fetch", Err: err}
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		snippet, _ := io.ReadAll(io.LimitReader(resp.Body, httpErrorBodyCap))

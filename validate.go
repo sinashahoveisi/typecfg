@@ -10,10 +10,12 @@ import (
 	"strings"
 )
 
-// Validator can be implemented by any config struct (or nested struct) to
-// add validation beyond what struct tags express, e.g. cross-field checks
-// like "StartPort must be < EndPort".
+// Validator can be implemented by a config struct (or nested value that is
+// the Load target) for cross-field checks beyond validate tags, e.g.
+// "StartPort must be < EndPort". Loader calls Validate after tag rules.
 type Validator interface {
+	// Validate returns a non-nil error to fail Load as a FieldError on
+	// field "<struct>" with tag "Validate()".
 	Validate() error
 }
 

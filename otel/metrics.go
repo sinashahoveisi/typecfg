@@ -40,7 +40,7 @@ func Register[T any](l *typecfg.Loader[T], meter metric.Meter) error {
 		return fmt.Errorf("otel: create config_reload_errors_total: %w", err)
 	}
 
-	l.OnReload(func(old, new *T) {
+	l.OnReload(func(old, newCfg *T) {
 		reloads.Add(context.Background(), 1)
 	})
 	l.OnError(func(err error) {

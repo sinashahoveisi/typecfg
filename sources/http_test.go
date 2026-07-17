@@ -170,7 +170,7 @@ func TestRemoteHTTP_Watch_SignalsOnRealChange(t *testing.T) {
 	if err := loader.Watch(ctx); err != nil {
 		t.Fatalf("Watch: %v", err)
 	}
-	defer loader.Stop()
+	defer func() { _ = loader.Stop() }()
 
 	// Content still A during Watch start; change after first poll settles.
 	time.Sleep(80 * time.Millisecond)
@@ -233,7 +233,7 @@ func TestRemoteHTTP_Watch_DetectsChangeBetweenLoadAndWatch(t *testing.T) {
 	if err := loader.Watch(ctx); err != nil {
 		t.Fatalf("Watch: %v", err)
 	}
-	defer loader.Stop()
+	defer func() { _ = loader.Stop() }()
 
 	select {
 	case cfgB := <-reloads:
@@ -263,7 +263,7 @@ func TestRemoteHTTP_Watch_NoSignalWhenUnchanged(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Watch: %v", err)
 	}
-	defer stop()
+	defer func() { _ = stop() }()
 
 	// Wait through several ticks; baseline must not produce a signal.
 	deadline := time.After(250 * time.Millisecond)
@@ -323,7 +323,7 @@ func TestRemoteHTTP_Watch_SurvivesTransientErrorThenPicksUpChange(t *testing.T) 
 	if err := loader.Watch(ctx); err != nil {
 		t.Fatalf("Watch: %v", err)
 	}
-	defer loader.Stop()
+	defer func() { _ = loader.Stop() }()
 
 	// After transient failure, watch should still be alive; change content.
 	time.Sleep(200 * time.Millisecond)
@@ -366,6 +366,7 @@ func TestRemoteHTTP_Watch_CancelStopsCleanly(t *testing.T) {
 	closed := make(chan struct{})
 	go func() {
 		for range changed {
+			continue // drain until closed
 		}
 		close(closed)
 	}()

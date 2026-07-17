@@ -10,10 +10,14 @@ import (
 	"strings"
 )
 
-// Options configures code generation.
+// Options configures typecfg-gen code generation for one named struct.
 type Options struct {
-	TypeName    string
-	InputPath   string
+	// TypeName is the exported struct type to generate a binder for.
+	TypeName string
+	// InputPath is the .go file that declares TypeName (parsed with go/parser).
+	InputPath string
+	// PackageName is the package clause written into the generated file.
+	// When it is "typecfg", helpers are referenced without an import prefix.
 	PackageName string
 }
 

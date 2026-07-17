@@ -46,7 +46,7 @@ func main() {
 	if err := loader.Watch(ctx); err != nil {
 		log.Fatalf("failed to watch config: %v", err)
 	}
-	defer loader.Stop()
+	defer func() { _ = loader.Stop() }()
 
 	select {} // run forever; edit config.yaml to see hot reload in action
 }

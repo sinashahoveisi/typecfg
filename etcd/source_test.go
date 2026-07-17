@@ -253,7 +253,7 @@ func TestEtcdSource_Watch_EventSignals(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Watch: %v", err)
 	}
-	defer stop()
+	defer func() { _ = stop() }()
 
 	select {
 	case <-changed:
@@ -282,7 +282,7 @@ func TestEtcdSource_Watch_NoFalsePositive(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Watch: %v", err)
 	}
-	defer stop()
+	defer func() { _ = stop() }()
 
 	deadline := time.After(120 * time.Millisecond)
 	for {
@@ -331,7 +331,7 @@ func TestEtcdSource_Watch_ErrorResyncThenSignals(t *testing.T) {
 			if err != nil {
 				t.Fatalf("Watch: %v", err)
 			}
-			defer stop()
+			defer func() { _ = stop() }()
 
 			time.Sleep(30 * time.Millisecond)
 			tc.inject(f)
@@ -365,6 +365,7 @@ func TestEtcdSource_Watch_CancelStopsCleanly(t *testing.T) {
 	closed := make(chan struct{})
 	go func() {
 		for range changed {
+			continue // drain until closed
 		}
 		close(closed)
 	}()
@@ -407,7 +408,7 @@ func TestEtcdSource_Watch_DetectsChangeBetweenLoadAndWatch(t *testing.T) {
 	if err := loader.Watch(ctx); err != nil {
 		t.Fatalf("Watch: %v", err)
 	}
-	defer loader.Stop()
+	defer func() { _ = loader.Stop() }()
 
 	select {
 	case cfgB := <-reloads:

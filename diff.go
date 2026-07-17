@@ -7,23 +7,25 @@ import (
 
 // FieldChange describes one leaf field that differs between two configs.
 type FieldChange struct {
+	// Path is the dotted cfg-tag path, e.g. "server.port".
 	Path string
-	Old  any
-	New  any
+	// Old is the previous value, or nil when old was nil / the field was unset.
+	// For secret:"true" fields, non-nil values are replaced with "***REDACTED***".
+	Old any
+	// New is the current value. Secret fields are redacted like Old.
+	New any
 }
 
-// Diff compares old and new by walking exported fields with the same
-// dotted cfg-tag paths used by bind/validate. Only leaf fields appear
-// in the result. Fields tagged secret:"true" report Path but replace
-// both Old and New with redactedMarker.
-//
-// If old is nil (e.g. first-ever load), every leaf in new is reported
-// with Old == nil.
-func Diff[T any](old, new *T) []FieldChange {
-	if new == nil {
+// Diff walks exported fields of old and new using the same dotted cfg-tag
+// paths as bind/validate and returns only leaf changes. Nested structs are
+// recursed; secret:"true" fields keep Path but redact Old/New values.
+// When old is nil (first successful load), every leaf in new is reported
+// with Old == nil (secret New still redacted).
+func Diff[T any](old, newCfg *T) []FieldChange {
+	if newCfg == nil {
 		return nil
 	}
-	nv := reflect.ValueOf(new).Elem()
+	nv := reflect.ValueOf(newCfg).Elem()
 	var ov reflect.Value
 	if old != nil {
 		ov = reflect.ValueOf(old).Elem()

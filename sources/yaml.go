@@ -10,18 +10,22 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// YAMLFile is a Source that reads a YAML file from disk and can watch it
-// for changes using fsnotify.
+// YAMLFile is a Source that reads a YAML mapping from Path and watches the
+// file's directory for Write/Create/Rename of that basename (atomic saves).
 type YAMLFile struct {
+	// Path is the filesystem path of the YAML file.
 	Path string
 }
 
+// NewYAMLFile returns a YAMLFile Source for path.
 func NewYAMLFile(path string) *YAMLFile {
 	return &YAMLFile{Path: path}
 }
 
+// Name returns "file:<Path>" for SourceError messages.
 func (f *YAMLFile) Name() string { return "file:" + f.Path }
 
+// Load reads and yaml.Unmarshals Path into map[string]any.
 func (f *YAMLFile) Load(_ context.Context) (map[string]any, error) {
 	data, err := os.ReadFile(f.Path)
 	if err != nil {
@@ -34,13 +38,15 @@ func (f *YAMLFile) Load(_ context.Context) (map[string]any, error) {
 	return raw, nil
 }
 
+// Watch watches the parent directory and signals when Path's basename is
+// written, created, or renamed (editor atomic-save patterns).
 func (f *YAMLFile) Watch(ctx context.Context) (<-chan struct{}, func() error, error) {
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
 		return nil, nil, &typecfg.SourceError{Source: f.Name(), Op: "watch", Err: err}
 	}
 	if err := watcher.Add(filepath.Dir(f.Path)); err != nil {
-		watcher.Close()
+		_ = watcher.Close()
 		return nil, nil, &typecfg.SourceError{Source: f.Name(), Op: "watch", Err: err}
 	}
 

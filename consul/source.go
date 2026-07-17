@@ -27,12 +27,15 @@ type kvLister interface {
 // ConsulSource reads nested config from Consul KV under Prefix and watches
 // for changes via Consul blocking queries (WaitIndex).
 type ConsulSource struct {
-	Client *api.Client // nil -> api.NewClient(api.DefaultConfig())
-	Prefix string      // e.g. "myapp/config/"
+	// Client is the Consul API client; nil means api.NewClient(api.DefaultConfig()).
+	Client *api.Client
+	// Prefix is the KV key prefix, e.g. "myapp/config/".
+	Prefix string
 
-	// Optional overrides for tests / tuning. Zero means defaults.
-	WaitTime   time.Duration // blocking query bound; default 5m
-	RetryAfter time.Duration // backoff after connection errors; default 1s
+	// WaitTime bounds each blocking query; zero means 5m.
+	WaitTime time.Duration
+	// RetryAfter is the backoff after connection errors; zero means 1s.
+	RetryAfter time.Duration
 
 	kv kvLister // nil -> Client.KV(); set by tests
 
@@ -46,6 +49,7 @@ func NewConsulSource(prefix string) *ConsulSource {
 	return &ConsulSource{Prefix: prefix}
 }
 
+// Name returns "consul:<Prefix>" for SourceError messages.
 func (s *ConsulSource) Name() string { return "consul:" + s.Prefix }
 
 func (s *ConsulSource) getKV() (kvLister, error) {
@@ -64,6 +68,9 @@ func (s *ConsulSource) getKV() (kvLister, error) {
 	return client.KV(), nil
 }
 
+// Load lists KV pairs under Prefix and builds a nested map; keys relative to
+// Prefix are split on "/" into nested maps. Updates the WaitIndex baseline
+// used by Watch.
 func (s *ConsulSource) Load(ctx context.Context) (map[string]any, error) {
 	kv, err := s.getKV()
 	if err != nil {

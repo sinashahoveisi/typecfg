@@ -26,6 +26,7 @@ type FieldError struct {
 	Reason string
 }
 
+// Error implements the error interface for a single field failure.
 func (e *FieldError) Error() string {
 	if len(e.Sources) == 0 {
 		return fmt.Sprintf("typecfg: field %q: %s", e.Field, e.Reason)
@@ -33,13 +34,14 @@ func (e *FieldError) Error() string {
 	return fmt.Sprintf("typecfg: field %q (sources: %v): %s", e.Field, e.Sources, e.Reason)
 }
 
-// ValidationError aggregates all FieldErrors found in a single Load/Reload
-// pass, so the caller sees every problem at once instead of fixing config
-// one error at a time.
+// ValidationError aggregates all FieldErrors from one Load/reload so callers
+// see every problem at once instead of fixing config one field at a time.
 type ValidationError struct {
+	// Errors is the full list of field-level failures from bind and/or validate.
 	Errors []*FieldError
 }
 
+// Error formats a single FieldError or a multi-line list of them.
 func (e *ValidationError) Error() string {
 	if len(e.Errors) == 1 {
 		return e.Errors[0].Error()
@@ -51,6 +53,7 @@ func (e *ValidationError) Error() string {
 	return msg
 }
 
+// Unwrap returns each FieldError as an error for errors.Is / errors.As.
 func (e *ValidationError) Unwrap() []error {
 	errs := make([]error, len(e.Errors))
 	for i, fe := range e.Errors {
@@ -59,30 +62,36 @@ func (e *ValidationError) Unwrap() []error {
 	return errs
 }
 
-// SourceError wraps a failure to read/parse a specific source (file, env),
-// keeping the underlying error while adding context about which source
-// and which loader step failed.
+// SourceError wraps a failure to read or parse a specific Source, naming the
+// source and operation while preserving the underlying error via Unwrap.
 type SourceError struct {
-	Source string // e.g. "file:config.yaml" or "env"
-	Op     string // e.g. "read", "parse", "watch"
-	Err    error
+	// Source identifies the origin, e.g. "file:config.yaml" or "env:APP*".
+	Source string
+	// Op is the failing step, e.g. "read", "parse", "watch", or "fetch".
+	Op string
+	// Err is the underlying failure.
+	Err error
 }
 
+// Error returns a "typecfg: <op> <source>: <err>" message.
 func (e *SourceError) Error() string {
 	return fmt.Sprintf("typecfg: %s %s: %v", e.Op, e.Source, e.Err)
 }
 
+// Unwrap returns the underlying Err.
 func (e *SourceError) Unwrap() error { return e.Err }
 
-// SchemaError wraps a failure from Loader.SetRawValidator (e.g. JSON
-// Schema). It is distinct from SourceError (a Source read/parse failure)
-// and ValidationError (struct-tag / Validator failures).
+// SchemaError wraps a failure from Loader.SetRawValidator (e.g. JSON Schema).
+// It is distinct from SourceError (source I/O) and ValidationError (tags).
 type SchemaError struct {
+	// Err is the validator's underlying error.
 	Err error
 }
 
+// Error returns a "typecfg: schema validation failed: …" message.
 func (e *SchemaError) Error() string {
 	return fmt.Sprintf("typecfg: schema validation failed: %v", e.Err)
 }
 
+// Unwrap returns the underlying Err.
 func (e *SchemaError) Unwrap() error { return e.Err }

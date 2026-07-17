@@ -28,8 +28,9 @@ import (
 	"sync"
 )
 
-// Loader loads a config struct of type T from one or more Sources,
-// validates it, and optionally watches sources for changes.
+// Loader is the main entry point for loading, validating, and optionally
+// hot-reloading a config struct of type T from one or more Sources.
+// Construct with New (reflection bind/validate) or NewGenerated (codegen).
 type Loader[T any] struct {
 	sources []Source
 
@@ -39,7 +40,7 @@ type Loader[T any] struct {
 	cancel   context.CancelFunc
 	stops    []func() error
 
-	onReload     []func(old, new *T)
+	onReload     []func(old, newCfg *T)
 	onError      []func(error)
 	stopWatchWG  sync.WaitGroup
 	rawValidator func(map[string]any) error
@@ -49,16 +50,18 @@ type Loader[T any] struct {
 	binder GeneratedBinder[T]
 }
 
-// New creates a Loader that reads from the given sources, in order.
-// Later sources override earlier ones for any key they both define.
+// New returns a Loader that binds and validates T via reflection.
+// Sources are read in order on each Load; later sources override earlier
+// ones for conflicting keys (including nested maps via recursive merge).
 func New[T any](sources ...Source) *Loader[T] {
 	return &Loader[T]{sources: sources}
 }
 
-// Load reads all sources, binds them onto a new T, validates it, and — on
-// success — stores it as the current config (retrievable via Get).
-// On validation or parsing failure, the previously loaded config (if any)
-// is left untouched and a *ValidationError or *SourceError is returned.
+// Load merges every Source (in order), optionally runs SetRawValidator on
+// the merged map, then binds and validates into a new T. On success it
+// stores that value for Get and returns it. On failure it returns
+// *SourceError, *SchemaError, or *ValidationError and leaves any previously
+// successful config untouched so Get keeps serving the last good value.
 func (l *Loader[T]) Load(ctx context.Context) (*T, error) {
 	merged := map[string]any{}
 	for _, src := range l.sources {
@@ -120,7 +123,7 @@ func (l *Loader[T]) Get() *T {
 
 // OnReload registers a callback invoked after a successful hot-reload
 // picks up a new, valid config. It is NOT called for the initial Load.
-func (l *Loader[T]) OnReload(fn func(old, new *T)) {
+func (l *Loader[T]) OnReload(fn func(old, newCfg *T)) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 	l.onReload = append(l.onReload, fn)
@@ -136,11 +139,10 @@ func (l *Loader[T]) OnError(fn func(error)) {
 	l.onError = append(l.onError, fn)
 }
 
-// SetRawValidator registers an optional hook invoked with the merged raw
-// config map after sources are loaded and merged, but before bind and
-// struct-tag validation. Use it for opt-in checks such as JSON Schema
-// (see the jsonschema/ submodule). If fn is nil, the hook is cleared.
-// When unset, Load behaves exactly as before.
+// SetRawValidator registers fn to run on the merged raw map after all
+// sources succeed and before bind/validate (reflection or generated).
+// A non-nil error from fn aborts Load as *SchemaError without binding.
+// Passing nil clears the hook. Unset, Load skips this step entirely.
 func (l *Loader[T]) SetRawValidator(fn func(map[string]any) error) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
@@ -157,13 +159,14 @@ func (l *Loader[T]) SetLogger(logger *slog.Logger) {
 	l.logger = logger
 }
 
-// Watch starts watching all Watchable sources in the background. Every
-// time any of them signals a change, all sources are re-read, re-bound,
-// and re-validated; on success Get() starts returning the new value and
-// OnReload callbacks fire; on failure OnError callbacks fire and the old
-// config keeps being served.
-//
-// Watch returns immediately; call Stop (or cancel ctx) to stop watching.
+// Watch starts background watchers for every Source that implements
+// Watchable. When any watcher signals a change, Load is re-run: success
+// updates Get and fires OnReload (and SetLogger Info with Diff); failure
+// fires OnError (and SetLogger Error) while Get continues returning the
+// previous good config — including transient source I/O errors mid-edit.
+// Watch itself returns immediately after starting goroutines; use Stop or
+// cancel ctx to shut them down. Non-Watchable sources are still re-read
+// on each reload but do not trigger one.
 func (l *Loader[T]) Watch(ctx context.Context) error {
 	watchCtx, cancel := context.WithCancel(ctx)
 	l.watchCtx = watchCtx
@@ -223,7 +226,7 @@ func (l *Loader[T]) reload(ctx context.Context) {
 	newCfg, err := l.Load(ctx)
 
 	l.mu.RLock()
-	onReload := append([]func(old, new *T){}, l.onReload...)
+	onReload := append([]func(old, newCfg *T){}, l.onReload...)
 	onError := append([]func(error){}, l.onError...)
 	logger := l.logger
 	l.mu.RUnlock()

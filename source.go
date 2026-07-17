@@ -2,23 +2,24 @@ package typecfg
 
 import "context"
 
-// Source is anything that can produce raw config key/value data: a YAML
-// file, a JSON file, the environment, a remote key-value store, etc.
-//
-// Load returns a nested map (e.g. {"server": {"port": 8080}}) using
-// lower_snake_case or dot-free keys matching struct tag names.
+// Source produces raw nested config data (e.g. YAML file, env vars, Consul).
+// Implementations should return maps whose keys match cfg struct tags;
+// values may be nested map[string]any or scalars (often strings from env).
 type Source interface {
-	// Name identifies the source in error messages, e.g. "file:config.yaml".
+	// Name returns a short label for errors, e.g. "file:config.yaml".
 	Name() string
-	// Load reads and parses the source into a nested map[string]any.
+	// Load fetches and parses the source. Returning an error aborts Loader.Load
+	// immediately (no bind/validate); Watch reloads treat that as OnError.
 	Load(ctx context.Context) (map[string]any, error)
 }
 
-// Watchable is an optional interface a Source can implement to support
-// hot-reload. Watch should send on the returned channel whenever the
-// underlying data may have changed (the loader will re-Load and diff).
-// Closing stop must make the goroutine feeding the channel exit.
+// Watchable is implemented by Sources that can signal when underlying data
+// may have changed. Loader.Watch calls Watch on each such source and
+// aggregates change notifications into a single reload loop.
 type Watchable interface {
+	// Watch starts a background signaler. changed receives a value when a
+	// reload should be attempted (coalesced by Loader). stop must cancel
+	// the watcher and wait until it exits; ctx cancellation should also stop it.
 	Watch(ctx context.Context) (changed <-chan struct{}, stop func() error, err error)
 }
 

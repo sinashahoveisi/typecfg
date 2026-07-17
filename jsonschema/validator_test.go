@@ -169,7 +169,7 @@ func TestValidator_HotReloadPreservesPrevious(t *testing.T) {
 	if err := loader.Watch(ctx); err != nil {
 		t.Fatalf("watch failed: %v", err)
 	}
-	defer loader.Stop()
+	defer func() { _ = loader.Stop() }()
 
 	// Schema-violating update (port below minimum).
 	src.update(map[string]any{

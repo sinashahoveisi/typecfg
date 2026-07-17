@@ -196,7 +196,7 @@ func TestConsulSource_Watch_IndexChangeSignals(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Watch: %v", err)
 	}
-	defer stop()
+	defer func() { _ = stop() }()
 
 	// First List establishes index 10 — must not signal yet.
 	select {
@@ -264,7 +264,7 @@ func TestConsulSource_Watch_DetectsChangeBetweenLoadAndWatch(t *testing.T) {
 	if err := loader.Watch(ctx); err != nil {
 		t.Fatalf("Watch: %v", err)
 	}
-	defer loader.Stop()
+	defer func() { _ = loader.Stop() }()
 
 	select {
 	case cfgB := <-reloads:
@@ -294,7 +294,7 @@ func TestConsulSource_Watch_NoFalsePositiveOnTimeout(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Watch: %v", err)
 	}
-	defer stop()
+	defer func() { _ = stop() }()
 
 	deadline := time.After(150 * time.Millisecond)
 	for {
@@ -328,7 +328,7 @@ func TestConsulSource_Watch_SurvivesConnectionErrorThenSignals(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Watch: %v", err)
 	}
-	defer stop()
+	defer func() { _ = stop() }()
 
 	// Let initial index establish.
 	time.Sleep(40 * time.Millisecond)
@@ -376,6 +376,7 @@ func TestConsulSource_Watch_CancelStopsCleanly(t *testing.T) {
 	closed := make(chan struct{})
 	go func() {
 		for range changed {
+			continue // drain until closed
 		}
 		close(closed)
 	}()

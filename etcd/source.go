@@ -29,9 +29,10 @@ type EtcdSource struct {
 	// Client must be set for production use. Unlike Consul, etcd has no
 	// safe zero-config default (endpoints are required).
 	Client *clientv3.Client
+	// Prefix is the key prefix to Get/Watch with WithPrefix.
 	Prefix string
 
-	// RetryAfter is the backoff after watch/get failures. Zero -> 1s.
+	// RetryAfter is the backoff after watch/get failures; zero means 1s.
 	RetryAfter time.Duration
 
 	api etcdAPI // nil -> Client; set by tests
@@ -47,6 +48,7 @@ func NewEtcdSource(prefix string) *EtcdSource {
 	return &EtcdSource{Prefix: prefix}
 }
 
+// Name returns "etcd:<Prefix>" for SourceError messages.
 func (s *EtcdSource) Name() string { return "etcd:" + s.Prefix }
 
 func (s *EtcdSource) getAPI() (etcdAPI, error) {
@@ -59,6 +61,8 @@ func (s *EtcdSource) getAPI() (etcdAPI, error) {
 	return s.Client, nil
 }
 
+// Load gets all keys under Prefix and builds a nested map; relative key
+// path segments become nested maps. Records the response revision for Watch.
 func (s *EtcdSource) Load(ctx context.Context) (map[string]any, error) {
 	api, err := s.getAPI()
 	if err != nil {
@@ -219,7 +223,6 @@ func (s *EtcdSource) Watch(ctx context.Context) (<-chan struct{}, func() error, 
 						if newRev != prev {
 							signal()
 						}
-						rev = newRev
 					}
 					restart = true
 					break
@@ -232,7 +235,6 @@ func (s *EtcdSource) Watch(ctx context.Context) (<-chan struct{}, func() error, 
 				s.lastRev = newRev
 				s.hasLoad = true
 				s.mu.Unlock()
-				rev = newRev
 				signal()
 			}
 
