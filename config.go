@@ -24,6 +24,7 @@ package typecfg
 
 import (
 	"context"
+	"log/slog"
 	"sync"
 )
 
@@ -42,6 +43,7 @@ type Loader[T any] struct {
 	onError      []func(error)
 	stopWatchWG  sync.WaitGroup
 	rawValidator func(map[string]any) error
+	logger       *slog.Logger
 }
 
 // New creates a Loader that reads from the given sources, in order.
@@ -126,6 +128,16 @@ func (l *Loader[T]) SetRawValidator(fn func(map[string]any) error) {
 	l.rawValidator = fn
 }
 
+// SetLogger registers an optional slog.Logger used by hot-reload to emit
+// structured logs on success (Info) and failure (Error). Logging is
+// additive alongside OnReload/OnError callbacks. If logger is nil, or
+// SetLogger is never called, reload behavior is unchanged.
+func (l *Loader[T]) SetLogger(logger *slog.Logger) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	l.logger = logger
+}
+
 // Watch starts watching all Watchable sources in the background. Every
 // time any of them signals a change, all sources are re-read, re-bound,
 // and re-validated; on success Get() starts returning the new value and
@@ -194,13 +206,29 @@ func (l *Loader[T]) reload(ctx context.Context) {
 	l.mu.RLock()
 	onReload := append([]func(old, new *T){}, l.onReload...)
 	onError := append([]func(error){}, l.onError...)
+	logger := l.logger
 	l.mu.RUnlock()
 
 	if err != nil {
+		if logger != nil {
+			logger.Error("config reload failed", slog.Any("err", err))
+		}
 		for _, fn := range onError {
 			fn(err)
 		}
 		return
+	}
+	if logger != nil {
+		changes := Diff(old, newCfg)
+		attrs := make([]any, 0, 1+len(changes))
+		attrs = append(attrs, slog.Int("change_count", len(changes)))
+		for _, c := range changes {
+			attrs = append(attrs, slog.Group(c.Path,
+				slog.Any("old", c.Old),
+				slog.Any("new", c.New),
+			))
+		}
+		logger.Info("config reloaded", attrs...)
 	}
 	for _, fn := range onReload {
 		fn(old, newCfg)
