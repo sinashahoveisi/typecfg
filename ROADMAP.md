@@ -50,3 +50,5 @@
 - [x] Integration tests exercise the full public API together, not
       just units in isolation
 - [x] Goroutine-leak and concurrent-load sanity checks, run with -race
+- [x] An explicit written assessment of which exported API surfaces
+      you consider stable vs. which you have lingering doubts about
