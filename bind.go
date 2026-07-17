@@ -1,7 +1,6 @@
 package typecfg
 
 import (
-	"encoding/json"
 	"fmt"
 	"reflect"
 	"strconv"
@@ -217,15 +216,9 @@ func setScalar(fv reflect.Value, s string, layout string) error {
 }
 
 func setTime(fv reflect.Value, s string, layout string) error {
-	if layout == "" {
-		layout = time.RFC3339
-	}
-	t, err := time.Parse(layout, s)
+	t, err := ParseTime(s, layout)
 	if err != nil {
-		if layout == time.RFC3339 {
-			return fmt.Errorf(`expected RFC3339 (e.g. "2026-01-01T00:00:00Z"), got %q`, s)
-		}
-		return fmt.Errorf("expected layout %q, got %q", layout, s)
+		return err
 	}
 	fv.Set(reflect.ValueOf(t))
 	return nil
@@ -336,33 +329,18 @@ func isStringStringMap(t reflect.Type) bool {
 }
 
 func setStringMap(fv reflect.Value, raw any) error {
-	switch v := raw.(type) {
-	case map[string]any:
-		m := make(map[string]string, len(v))
-		for k, val := range v {
-			m[k] = fmt.Sprintf("%v", val)
-		}
-		fv.Set(reflect.ValueOf(m))
-		return nil
-	case map[string]string:
-		// Copy so callers cannot mutate the source map via the config.
-		m := make(map[string]string, len(v))
-		for k, val := range v {
-			m[k] = val
-		}
-		fv.Set(reflect.ValueOf(m))
-		return nil
-	case string:
-		return setStringMapFromJSON(fv, v)
-	default:
-		return setStringMapFromJSON(fv, fmt.Sprintf("%v", raw))
+	m, err := CoerceStringMap(raw)
+	if err != nil {
+		return err
 	}
+	fv.Set(reflect.ValueOf(m))
+	return nil
 }
 
 func setStringMapFromJSON(fv reflect.Value, s string) error {
-	m := map[string]string{}
-	if err := json.Unmarshal([]byte(s), &m); err != nil {
-		return fmt.Errorf("invalid JSON for map[string]string %q: %v", s, err)
+	m, err := stringMapFromJSON(s)
+	if err != nil {
+		return err
 	}
 	fv.Set(reflect.ValueOf(m))
 	return nil

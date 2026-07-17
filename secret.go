@@ -34,10 +34,7 @@ func displayQuoted(secret bool, s string) string {
 // When secret, the underlying err (which often embeds the raw input) is
 // discarded so the value cannot leak.
 func bindTypeReason(secret bool, target reflect.Type, err error) string {
-	if !secret {
-		return err.Error()
-	}
-	return fmt.Sprintf("cannot convert %s to %s", redactedMarker, target)
+	return bindTypeReasonNamed(secret, target.String(), err)
 }
 
 // defaultTagReason is the FieldError.Reason for an invalid default tag value.

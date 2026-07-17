@@ -48,8 +48,8 @@ including hot reload, custom sources, and validation.
   `EnvSource` is in the core; `YAMLFile`/`JSONFile` are in `sources/`.
 - Sources merge in order; the last one wins.
 - **`Watchable`** — optional interface for hot reload (file sources in `sources/`).
-- Struct binding uses reflection; a zero-reflection codegen mode is on the
-  [roadmap](./ROADMAP.md).
+- Struct binding uses reflection by default; optional zero-reflection codegen
+  via [`typecfg-gen`](./docs/codegen.md) + `NewGenerated`.
 
 Full runnable example in [`examples/basic/`](./examples/basic/).
 
